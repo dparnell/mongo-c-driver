@@ -107,7 +107,7 @@ MONGO_EXPORT int bson_size( const bson *b ) {
 }
 
 MONGO_EXPORT int bson_buffer_size( const bson *b ) {
-    return (b->cur - b->data + 1);
+    return (int)(b->cur - b->data + 1);
 }
 
 
@@ -356,7 +356,7 @@ MONGO_EXPORT bson_type bson_iterator_next( bson_iterator *i ) {
         const char *p = s;
         p += strlen( p )+1;
         p += strlen( p )+1;
-        ds = p-s;
+        ds = (int)(p-s);
         break;
     }
 
@@ -420,7 +420,7 @@ MONGO_EXPORT int bson_iterator_int( const bson_iterator *i ) {
     case BSON_INT:
         return bson_iterator_int_raw( i );
     case BSON_LONG:
-        return bson_iterator_long_raw( i );
+        return (int)bson_iterator_long_raw( i );
     case BSON_DOUBLE:
         return bson_iterator_double_raw( i );
     default:
@@ -619,7 +619,7 @@ static void bson_append64( bson *b, const void *data ) {
 }
 
 int bson_ensure_space( bson *b, const int bytesNeeded ) {
-    int pos = b->cur - b->data;
+    int pos = (int)(b->cur - b->data);
     char *orig = b->data;
     int new_size;
 
@@ -656,7 +656,7 @@ MONGO_EXPORT int bson_finish( bson *b ) {
     if ( ! b->finished ) {
         if ( bson_ensure_space( b, 1 ) == BSON_ERROR ) return BSON_ERROR;
         bson_append_byte( b, 0 );
-        i = b->cur - b->data;
+        i = (int)(b->cur - b->data);
         bson_little_endian32( b->data, &i );
         b->finished = 1;
     }
@@ -675,7 +675,7 @@ MONGO_EXPORT void bson_destroy( bson *b ) {
 }
 
 static int bson_append_estart( bson *b, int type, const char *name, const int dataSize ) {
-    const int len = strlen( name ) + 1;
+    const int len = (int)strlen( name ) + 1;
 
     if ( b->finished ) {
         b->err |= BSON_ALREADY_FINISHED;
@@ -756,15 +756,15 @@ static int bson_append_string_base( bson *b, const char *name,
 }
 
 MONGO_EXPORT int bson_append_string( bson *b, const char *name, const char *value ) {
-    return bson_append_string_base( b, name, value, strlen ( value ), BSON_STRING );
+    return bson_append_string_base( b, name, value, (int)strlen ( value ), BSON_STRING );
 }
 
 MONGO_EXPORT int bson_append_symbol( bson *b, const char *name, const char *value ) {
-    return bson_append_string_base( b, name, value, strlen ( value ), BSON_SYMBOL );
+    return bson_append_string_base( b, name, value, (int)strlen ( value ), BSON_SYMBOL );
 }
 
 MONGO_EXPORT int bson_append_code( bson *b, const char *name, const char *value ) {
-    return bson_append_string_base( b, name, value, strlen ( value ), BSON_CODE );
+    return bson_append_string_base( b, name, value, (int)strlen ( value ), BSON_CODE );
 }
 
 MONGO_EXPORT int bson_append_string_n( bson *b, const char *name, const char *value, int len ) {
@@ -796,7 +796,7 @@ MONGO_EXPORT int bson_append_code_w_scope_n( bson *b, const char *name,
 }
 
 MONGO_EXPORT int bson_append_code_w_scope( bson *b, const char *name, const char *code, const bson *scope ) {
-    return bson_append_code_w_scope_n( b, name, code, strlen ( code ), scope );
+    return bson_append_code_w_scope_n( b, name, code, (int)strlen ( code ), scope );
 }
 
 MONGO_EXPORT int bson_append_binary( bson *b, const char *name, char type, const char *str, int len ) {
@@ -832,8 +832,8 @@ MONGO_EXPORT int bson_append_new_oid( bson *b, const char *name ) {
 }
 
 MONGO_EXPORT int bson_append_regex( bson *b, const char *name, const char *pattern, const char *opts ) {
-    const int plen = strlen( pattern )+1;
-    const int olen = strlen( opts )+1;
+    const int plen = (int)strlen( pattern )+1;
+    const int olen = (int)strlen( opts )+1;
     if ( bson_append_estart( b, BSON_REGEX, name, plen + olen ) == BSON_ERROR )
         return BSON_ERROR;
     if ( bson_check_string( b, pattern, plen - 1 ) == BSON_ERROR )
@@ -856,14 +856,14 @@ MONGO_EXPORT int bson_append_element( bson *b, const char *name_or_null, const b
     int size;
 
     bson_iterator_next( &next );
-    size = next.cur - elem->cur;
+    size = (int)(next.cur - elem->cur);
 
     if ( name_or_null == NULL ) {
         if( bson_ensure_space( b, size ) == BSON_ERROR )
             return BSON_ERROR;
         bson_append( b, elem->cur, size );
     } else {
-        int data_size = size - 2 - strlen( bson_iterator_key( elem ) );
+        int data_size = size - 2 - (int)strlen( bson_iterator_key( elem ) );
         bson_append_estart( b, elem->cur[0], name_or_null, data_size );
         bson_append( b, bson_iterator_value( elem ), data_size );
     }
@@ -900,14 +900,14 @@ MONGO_EXPORT int bson_append_time_t( bson *b, const char *name, time_t secs ) {
 
 MONGO_EXPORT int bson_append_start_object( bson *b, const char *name ) {
     if ( bson_append_estart( b, BSON_OBJECT, name, 5 ) == BSON_ERROR ) return BSON_ERROR;
-    b->stack[ b->stackPos++ ] = b->cur - b->data;
+    b->stack[ b->stackPos++ ] = (int)(b->cur - b->data);
     bson_append32( b , &zero );
     return BSON_OK;
 }
 
 MONGO_EXPORT int bson_append_start_array( bson *b, const char *name ) {
     if ( bson_append_estart( b, BSON_ARRAY, name, 5 ) == BSON_ERROR ) return BSON_ERROR;
-    b->stack[ b->stackPos++ ] = b->cur - b->data;
+    b->stack[ b->stackPos++ ] = (int)(b->cur - b->data);
     bson_append32( b , &zero );
     return BSON_OK;
 }
@@ -919,7 +919,7 @@ MONGO_EXPORT int bson_append_finish_object( bson *b ) {
     bson_append_byte( b , 0 );
 
     start = b->data + b->stack[ --b->stackPos ];
-    i = b->cur - start;
+    i = (int)(b->cur - start);
     bson_little_endian32( start, &i );
 
     return BSON_OK;
